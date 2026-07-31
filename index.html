@@ -708,8 +708,8 @@
     <!-- 底部工具栏 -->
     <div id="toolbar">
         <button class="btn btn-primary" id="btnReset">📍原点</button>
+        <button class="btn btn-primary" id="btnHall2">🏛️ 场馆2</button>
         <button class="btn btn-primary" id="btnHall3">🏛️ 场馆3</button>
-        <button class="btn btn-warning" id="btnOverview">🔭俯瞰</button>
         <button class="btn btn-pink" id="btnGetPos">📋坐标</button>
         <button class="btn btn-success" id="btnAddWaypoint">📍动线点</button>
         <button class="btn btn-danger" id="btnClearWaypoints">🗑️清动线</button>
@@ -2913,17 +2913,20 @@
                 showToast('📍 回到原点', 800);
             }
         });
-
+// 👇 添加场馆2的点击事件
+$('btnHall2').addEventListener('click', () => {
+    if (isOverviewMode) setBrowseMode();
+    camera.position.set(-2.719, 2.449, -23.617);
+    controls.target.set(-3.153, 0.800, -28.345);
+    controls.update();
+    showToast('📍 已切换到场馆2', 800);
+});
         $('btnHall3').addEventListener('click', () => {
             if (isOverviewMode) setBrowseMode();
             camera.position.copy(HALL3_POS);
             controls.target.copy(HALL3_TARGET);
             controls.update();
             showToast('📍 已切换到场馆3', 800);
-        });
-
-        $('btnOverview').addEventListener('click', () => {
-            isOverviewMode ? setBrowseMode() : setOverviewMode();
         });
 
         $('btnGetPos').addEventListener('click', () => {
@@ -3016,36 +3019,6 @@
         });
 
         // --- 模式切换 ---
-        function setBrowseMode() {
-            isOverviewMode = false;
-            controls.enableZoom = false;
-            controls.enablePan = false;
-            controls.maxPolarAngle = Math.PI / 2.1;
-            controls.minPolarAngle = 0.1;
-            controls.target.copy(START_TARGET);
-            camera.position.set(START_POS.x, cameraHeight, START_POS.z);
-            controls.update();
-            modeText.textContent = '浏览';
-            modeText.style.color = '#88ddff';
-            $('btnOverview').textContent = '🔭 俯瞰';
-            $('btnOverview').classList.remove('active');
-        }
-
-        function setOverviewMode() {
-            isOverviewMode = true;
-            controls.enableZoom = true;
-            controls.enablePan = true;
-            controls.maxPolarAngle = Math.PI;
-            controls.minPolarAngle = 0;
-            controls.target.copy(OVERVIEW_TARGET);
-            camera.position.copy(OVERVIEW_POS);
-            controls.update();
-            modeText.textContent = '俯瞰';
-            modeText.style.color = '#ffaa66';
-            $('btnOverview').textContent = '🚶 回到地面';
-            $('btnOverview').classList.add('active');
-        }
-
         // ============================================================
         //  键盘控制
         // ============================================================
