@@ -1,0 +1,3190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D展馆 - 专业编辑器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            font-family: "Microsoft YaHei", sans-serif;
+            background: #111;
+            color: #eee;
+        }
+
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            background: rgba(0, 0, 0, 0.75);
+            padding: 8px 24px;
+            border-radius: 30px;
+            z-index: 100;
+            font-size: 15px;
+            pointer-events: none;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            white-space: nowrap;
+        }
+
+        #info span {
+            color: #88ddff;
+        }
+
+        #loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #111;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #88ddff;
+            font-size: 20px;
+            z-index: 200;
+            transition: opacity 0.5s;
+        }
+
+        #loading .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(136, 221, 255, 0.1);
+            border-top-color: #88ddff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        #loading.hide {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #loadStatus {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.4);
+            margin-top: 8px;
+        }
+
+        #status {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            color: #ffaa44;
+            font-size: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 4px 14px;
+            border-radius: 16px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 170, 68, 0.2);
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        #status.show {
+            opacity: 1;
+        }
+
+        #modeIndicator {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 4px 14px;
+            border-radius: 16px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        #modeIndicator .highlight {
+            color: #88ddff;
+            font-weight: bold;
+        }
+
+        #toast {
+            position: absolute;
+            bottom: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 6px 18px;
+            border-radius: 20px;
+            z-index: 150;
+            font-size: 13px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        #toast.show {
+            opacity: 1;
+        }
+
+        #toolbar {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 4px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 8px 14px;
+            border-radius: 40px;
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 98vw;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.06);
+            color: #ddd;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            cursor: pointer;
+            font-family: "Microsoft YaHei", sans-serif;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn:hover {
+            background: rgba(136, 221, 255, 0.12);
+            border-color: rgba(136, 221, 255, 0.2);
+            transform: scale(1.03);
+        }
+
+        .btn-primary {
+            background: rgba(68, 136, 255, 0.15);
+            border-color: rgba(68, 136, 255, 0.2);
+        }
+
+        .btn-primary:hover {
+            background: rgba(68, 136, 255, 0.25);
+        }
+
+        .btn-danger {
+            background: rgba(255, 70, 70, 0.1);
+            border-color: rgba(255, 70, 70, 0.15);
+        }
+
+        .btn-danger:hover {
+            background: rgba(255, 70, 70, 0.2);
+        }
+
+        .btn-success {
+            background: rgba(60, 200, 150, 0.1);
+            border-color: rgba(60, 200, 150, 0.15);
+        }
+
+        .btn-success:hover {
+            background: rgba(60, 200, 150, 0.2);
+        }
+
+        .btn-warning {
+            background: rgba(255, 180, 50, 0.1);
+            border-color: rgba(255, 180, 50, 0.15);
+        }
+
+        .btn-warning:hover {
+            background: rgba(255, 180, 50, 0.2);
+        }
+
+        .btn-pink {
+            background: rgba(255, 100, 180, 0.1);
+            border-color: rgba(255, 100, 180, 0.15);
+        }
+
+        .btn-pink:hover {
+            background: rgba(255, 100, 180, 0.2);
+        }
+
+        .btn-purple {
+            background: rgba(150, 80, 200, 0.1);
+            border-color: rgba(150, 80, 200, 0.15);
+        }
+
+        .btn-purple:hover {
+            background: rgba(150, 80, 200, 0.2);
+        }
+
+        .btn.active {
+            background: rgba(136, 221, 255, 0.15);
+            border-color: #88ddff;
+        }
+
+        #brightnessControls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #brightnessControls label {
+            font-size: 11px;
+            color: #ddd;
+            white-space: nowrap;
+        }
+
+        #brightnessSlider {
+            width: 150px;
+        }
+
+        #brightnessValue {
+            min-width: 36px;
+            text-align: right;
+            color: #fff;
+            font-size: 11px;
+        }
+
+        #leftToolbar {
+            position: absolute;
+            top: 50%;
+            left: 16px;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            z-index: 150;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 8px;
+            border-radius: 16px;
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        #leftToolbar .tool-label {
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.3);
+            text-align: center;
+            padding: 2px 0;
+            letter-spacing: 2px;
+            user-select: none;
+        }
+
+        #leftToolbar .tool-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.03);
+            color: #ddd;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        #leftToolbar .tool-btn:hover {
+            background: rgba(136, 221, 255, 0.08);
+            border-color: rgba(136, 221, 255, 0.15);
+            transform: scale(1.05);
+        }
+
+        #leftToolbar .tool-btn .tooltip {
+            position: absolute;
+            left: 48px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        #leftToolbar .tool-btn:hover .tooltip {
+            opacity: 1;
+        }
+
+        #leftToolbar .divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.06);
+            margin: 4px 0;
+        }
+
+        #leftToolbar .tool-btn.drag-mode {
+            background: rgba(255, 170, 0, 0.15);
+            border-color: #ffaa44;
+            box-shadow: 0 0 12px rgba(255, 170, 0, 0.2);
+        }
+
+        #contextMenu {
+            position: absolute;
+            display: none;
+            background: rgba(16, 20, 40, 0.96);
+            backdrop-filter: blur(16px);
+            border-radius: 10px;
+            padding: 6px 0;
+            min-width: 170px;
+            z-index: 300;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        }
+
+        #contextMenu .item {
+            padding: 10px 18px;
+            color: #ddd;
+            font-size: 13px;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            width: 100%;
+            text-align: left;
+            font-family: "Microsoft YaHei", sans-serif;
+            transition: background 0.1s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        #contextMenu .item:hover {
+            background: rgba(68, 136, 255, 0.15);
+        }
+
+        #contextMenu .item.danger {
+            color: #ff6666;
+        }
+
+        #contextMenu .item.danger:hover {
+            background: rgba(255, 70, 70, 0.15);
+        }
+
+        #contextMenu .divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.05);
+            margin: 4px 12px;
+        }
+
+        #contextMenu .item .icon {
+            font-size: 16px;
+            width: 28px;
+            text-align: center;
+        }
+
+        #fileInput,
+        #importInput,
+        #modelInput {
+            display: none;
+        }
+
+        #tip {
+            position: absolute;
+            bottom: 140px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.25);
+            font-size: 10px;
+            z-index: 50;
+            pointer-events: none;
+            text-align: center;
+            line-height: 1.8;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px 14px;
+            border-radius: 16px;
+            backdrop-filter: blur(2px);
+        }
+
+        #tip kbd {
+            background: rgba(255, 255, 255, 0.06);
+            padding: 1px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        #toastCoord {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(16, 20, 40, 0.96);
+            color: #ddd;
+            padding: 20px 30px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(12px);
+            z-index: 300;
+            font-size: 14px;
+            text-align: center;
+            line-height: 2;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            max-width: 90vw;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        }
+
+        #toastCoord.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #toastCoord code {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 2px 10px;
+            border-radius: 4px;
+            color: #88ddff;
+            font-size: 13px;
+        }
+
+        #toastCoord .close-btn {
+            margin-top: 12px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #ddd;
+            padding: 4px 18px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            pointer-events: auto;
+        }
+
+        #toastCoord .close-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        #toastCoord .hint {
+            color: #888;
+            font-size: 12px;
+            margin-top: 6px;
+        }
+
+        /* 缩放控制手柄 */
+        #scaleHandles {
+            position: absolute;
+            display: none;
+            z-index: 250;
+            pointer-events: none;
+        }
+
+        #scaleHandles .handle {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #ff8844;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            pointer-events: auto;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+            transition: transform 0.15s;
+        }
+
+        #scaleHandles .handle:hover {
+            transform: scale(1.3);
+        }
+
+        #scaleHandles .handle-x {
+            top: 50%;
+            right: -10px;
+            transform: translateY(-50%);
+            cursor: ew-resize;
+        }
+
+        #scaleHandles .handle-y {
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            cursor: ns-resize;
+        }
+
+        #scaleHandles .handle-z {
+            bottom: 50%;
+            left: -10px;
+            transform: translateY(50%);
+            cursor: ew-resize;
+        }
+
+        #scaleHandles .handle-xyz {
+            bottom: -10px;
+            right: -10px;
+            cursor: nwse-resize;
+        }
+
+        /* 图片控制手柄 */
+        #resizeHandles {
+            position: absolute;
+            display: none;
+            z-index: 250;
+            pointer-events: none;
+        }
+
+        #resizeHandles .handle {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: #88ddff;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            cursor: nwse-resize;
+            pointer-events: auto;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+            transition: transform 0.15s;
+        }
+
+        #resizeHandles .handle:hover {
+            transform: scale(1.2);
+        }
+
+        #resizeHandles .handle-tl {
+            top: -7px;
+            left: -7px;
+            cursor: nw-resize;
+        }
+
+        #resizeHandles .handle-tr {
+            top: -7px;
+            right: -7px;
+            cursor: ne-resize;
+        }
+
+        #resizeHandles .handle-bl {
+            bottom: -7px;
+            left: -7px;
+            cursor: sw-resize;
+        }
+
+        #resizeHandles .handle-br {
+            bottom: -7px;
+            right: -7px;
+            cursor: se-resize;
+        }
+
+        @media (max-width: 700px) {
+            #info {
+                font-size: 13px;
+                padding: 6px 14px;
+                top: 12px;
+                white-space: normal;
+            }
+
+            #toolbar {
+                bottom: 70px;
+                padding: 6px 10px;
+                gap: 3px;
+                width: 98%;
+                border-radius: 30px;
+            }
+
+            .btn {
+                font-size: 10px;
+                padding: 3px 8px;
+            }
+
+            #tip {
+                bottom: 120px;
+                font-size: 10px;
+                padding: 4px 12px;
+            }
+
+            #status {
+                top: 65px;
+                right: 10px;
+                font-size: 10px;
+                padding: 3px 10px;
+            }
+
+            #modeIndicator {
+                top: 65px;
+                left: 10px;
+                font-size: 10px;
+                padding: 3px 10px;
+            }
+
+            #contextMenu {
+                min-width: 130px;
+            }
+
+            #contextMenu .item {
+                font-size: 12px;
+                padding: 8px 14px;
+            }
+
+            #toastCoord {
+                padding: 16px 20px;
+                font-size: 13px;
+                width: 92vw;
+            }
+
+            #leftToolbar {
+                left: 8px;
+                padding: 6px 4px;
+                gap: 4px;
+            }
+
+            #leftToolbar .tool-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
+                border-radius: 8px;
+            }
+
+            #leftToolbar .tool-btn .tooltip {
+                display: none;
+            }
+
+            #leftToolbar .tool-label {
+                font-size: 7px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loading">
+        <div class="spinner"></div>
+        <div>⏳ 加载展馆中...</div>
+        <div id="loadStatus">初始化...</div>
+    </div>
+    <div id="info">🏛️ <span>3D 展馆</span> · 专业编辑器</div>
+    <div id="modeIndicator">🎯 模式: <span class="highlight" id="modeText">浏览</span></div>
+    <div id="status">✏️ 编辑中</div>
+    <div id="toast"></div>
+    <div id="toastCoord">
+        <div id="coordContent"></div>
+        <div class="hint">👆 选中代码按 Ctrl+C 复制</div><button class="close-btn" id="coordClose">关闭</button>
+    </div>
+
+    <!-- 左侧工具栏 -->
+    <div id="leftToolbar">
+        <div class="tool-label">插入</div>
+        <button class="tool-btn" id="btnCube" title="正方体"><span>🧊</span><span class="tooltip">正方体</span></button>
+        <button class="tool-btn" id="btnBox" title="长方体"><span>📦</span><span class="tooltip">长方体</span></button>
+        <div class="divider"></div>
+        <button class="tool-btn" id="btnImportModel" title="导入模型"><span>📁</span><span
+                class="tooltip">导入模型</span></button>
+        <div class="divider"></div>
+        <button class="tool-btn" id="btnUndo" title="撤销" style="opacity:0.4;"><span>↩️</span><span
+                class="tooltip">撤销</span></button>
+        <button class="tool-btn" id="btnSave" title="保存" style="color:#4a7ab5;"><span>💾</span><span
+                class="tooltip">保存</span></button>
+        <div class="divider"></div>
+        <button class="tool-btn" id="btnClearObjects" title="清空所有" style="color:#cc4444;"><span>🗑️</span><span
+                class="tooltip">清空所有</span></button>
+    </div>
+
+    <!-- 底部工具栏 -->
+    <div id="toolbar">
+        <button class="btn btn-primary" id="btnReset">📍原点</button>
+        <button class="btn btn-primary" id="btnHall3">🏛️ 场馆3</button>
+        <button class="btn btn-warning" id="btnOverview">🔭俯瞰</button>
+        <button class="btn btn-pink" id="btnGetPos">📋坐标</button>
+        <button class="btn btn-success" id="btnAddWaypoint">📍动线点</button>
+        <button class="btn btn-danger" id="btnClearWaypoints">🗑️清动线</button>
+        <button class="btn btn-danger" id="btnClearLights">🗑️清灯光</button>
+        <button class="btn btn-danger" id="btnClearImages">🗑️清图片</button>
+        <button class="btn btn-purple" id="btnExport">📤导出</button>
+        <button class="btn btn-purple" id="btnImport">📥导入</button>
+        <button class="btn btn-warning" id="btnToggleLight">💡开灯</button>
+        <button class="btn btn-success" id="btnGlobalBright">☀️全局明亮</button>
+        <div id="brightnessControls">
+            <label for="brightnessSlider">亮度</label>
+            <input type="range" id="brightnessSlider" min="0.6" max="2.4" step="0.05" value="0.7">
+            <span id="brightnessValue">0.70</span>
+        </div>
+    </div>
+
+    <div id="tip">
+        <kbd>E/Q</kbd>升降视角 · <kbd>点击插入</kbd>拖拽放置 · <kbd>双击编辑</kbd> · <kbd>右键墙面</kbd>上传图片/放置灯光
+    </div>
+
+    <input type="file" id="fileInput" accept="image/*" multiple>
+    <input type="file" id="importInput" accept=".json">
+    <input type="file" id="modelInput" accept=".glb,.gltf,.obj,.dae">
+
+    <div id="contextMenu">
+        <button class="item" id="menuUpload"><span class="icon">📷</span> 上传图片</button>
+        <button class="item" id="menuLight"><span class="icon">💡</span> 放置灯光</button>
+        <div class="divider"></div>
+        <button class="item" id="menuVertical"><span class="icon">↕️</span> 垂直于地面</button>
+        <div class="divider"></div>
+        <button class="item" id="menuColorBlack"><span class="icon">⬛</span> 染成黑色</button>
+        <button class="item" id="menuColorWhite"><span class="icon">⬜</span> 染成白色</button>
+        <button class="item" id="menuColorBrown"><span class="icon">🟫</span> 染成棕色</button>
+        <div class="divider"></div>
+        <button class="item danger" id="menuDelete"><span class="icon">🗑️</span> 删除</button>
+        <div class="divider"></div>
+        <button class="item" id="menuCancel"><span class="icon">✕</span> 取消</button>
+    </div>
+
+    <!-- 缩放控制手柄 -->
+    <div id="scaleHandles">
+        <div class="handle handle-x" data-axis="x" title="宽度"></div>
+        <div class="handle handle-y" data-axis="y" title="高度"></div>
+        <div class="handle handle-z" data-axis="z" title="厚度"></div>
+        <div class="handle handle-xyz" data-axis="xyz" title="整体缩放"></div>
+    </div>
+
+    <!-- 图片控制手柄 -->
+    <div id="resizeHandles">
+        <div class="handle handle-tl" data-corner="tl"></div>
+        <div class="handle handle-tr" data-corner="tr"></div>
+        <div class="handle handle-bl" data-corner="bl"></div>
+        <div class="handle handle-br" data-corner="br"></div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { ColladaLoader } from 'three/addons/loaders/ColladaLoader.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        // --- DOM ---
+        const $ = id => document.getElementById(id);
+        const loading = $('loading');
+        const loadStatus = $('loadStatus');
+        const toast = $('toast');
+        const status = $('status');
+        const modeText = $('modeText');
+        const coordToast = $('toastCoord');
+        const coordContent = $('coordContent');
+        const fileInput = $('fileInput');
+        const importInput = $('importInput');
+        const modelInput = $('modelInput');
+        const ctx = $('contextMenu');
+        const scaleHandles = $('scaleHandles');
+        const resizeHandles = $('resizeHandles');
+
+        function showToast(msg, dur = 1500) {
+            toast.textContent = msg;
+            toast.classList.add('show');
+            clearTimeout(toast._t);
+            toast._t = setTimeout(() => toast.classList.remove('show'), dur);
+        }
+
+        // --- 场景 ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2a);
+        const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 100);
+        let cameraHeight = 1.75;
+
+        const START_POS = new THREE.Vector3(-6.749, cameraHeight, -0.084);
+        const START_TARGET = new THREE.Vector3(-6.048, 0.8, -4.970);
+        const HALL3_POS = new THREE.Vector3(-10.244, 3.264, -63.527);
+        const HALL3_TARGET = new THREE.Vector3(-8.955, 0.800, -67.714);
+        const OVERVIEW_POS = new THREE.Vector3(0, 8, 0.01);
+        const OVERVIEW_TARGET = new THREE.Vector3(0, 0, 0);
+        camera.position.copy(START_POS);
+        camera.lookAt(START_TARGET);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 0.7;
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.copy(START_TARGET);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.maxPolarAngle = Math.PI / 2.1;
+        controls.enableZoom = false;
+        controls.update();
+
+        // --- Bloom ---
+        const composer = new EffectComposer(renderer);
+        const renderPass = new RenderPass(scene, camera);
+        composer.addPass(renderPass);
+        const bloomPass = new UnrealBloomPass(
+            new THREE.Vector2(window.innerWidth, window.innerHeight),
+            0.3, 0.3, 0.15
+        );
+        composer.addPass(bloomPass);
+
+        // --- 灯光系统 ---
+        let lightsOn = true;
+        let globalBright = false;
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+        scene.add(ambientLight);
+
+        const allLights = [ambientLight];
+        const originalIntensities = [ambientLight.intensity];
+        const BASE_EXPOSURE = 0.7;
+        lightsOn = true;
+
+        function updateBrightness(value) {
+            renderer.toneMappingExposure = value;
+            const scale = value / BASE_EXPOSURE;
+            allLights.forEach((light, i) => {
+                light.intensity = lightsOn ? originalIntensities[i] * scale * (globalBright ? 2.0 : 1.0) : 0;
+            });
+        }
+
+        updateBrightness(BASE_EXPOSURE);
+
+        function toggleLights() {
+            lightsOn = !lightsOn;
+            if (globalBright && !lightsOn) {
+                globalBright = false;
+                $('btnGlobalBright').textContent = '☀️全局明亮';
+                $('btnGlobalBright').classList.remove('active');
+                bloomPass.strength = 0.3;
+            }
+            allLights.forEach((light, i) => {
+                light.intensity = lightsOn ? originalIntensities[i] : 0;
+            });
+            const btn = $('btnToggleLight');
+            btn.textContent = lightsOn ? '💡开灯' : '🌙关灯';
+            btn.classList.toggle('active', !lightsOn);
+            showToast(lightsOn ? '💡 灯光已开启' : '🌙 灯光已关闭', 1000);
+        }
+
+        function toggleGlobalBright() {
+            globalBright = !globalBright;
+            if (globalBright) {
+                allLights.forEach((light, i) => {
+                    light.intensity = originalIntensities[i] * 2.0;
+                });
+                $('btnGlobalBright').textContent = '🌥️全局明亮';
+                $('btnGlobalBright').classList.add('active');
+                if (!lightsOn) {
+                    lightsOn = true;
+                    $('btnToggleLight').textContent = '💡开灯';
+                    $('btnToggleLight').classList.remove('active');
+                }
+                bloomPass.strength = 0.8;
+                showToast('☀️ 全局明亮模式已开启', 1200);
+            } else {
+                allLights.forEach((light, i) => {
+                    light.intensity = lightsOn ? originalIntensities[i] : 0;
+                });
+                $('btnGlobalBright').textContent = '☀️全局明亮';
+                $('btnGlobalBright').classList.remove('active');
+                bloomPass.strength = 0.3;
+                showToast('☀️ 全局明亮模式已关闭', 1200);
+            }
+        }
+
+        allLights.forEach((light, i) => {
+            light.userData.originalIntensity = originalIntensities[i];
+        });
+
+        // --- 展馆 ---
+        let isOverviewMode = false;
+        let modelLoaded = false;
+        const galleryGroup = new THREE.Group();
+        scene.add(galleryGroup);
+
+        const waypoints = [];
+        let waypointId = 0;
+        const waypointMarkers = [];
+
+        // --- 对象管理 ---
+        const customObjects = [];
+        let selectedObject = null;
+        let isEditing = false;
+        let objectIdCounter = 0;
+        let suppressHistory = false;
+
+        // --- 图片管理 ---
+        const images = [];
+        let selectedImage = null;
+        let isImageEditing = false;
+        let imageIdCounter = 0;
+        let defaultImageSize = 1.0;
+
+        // --- 灯光物体 ---
+        const lightObjects = [];
+        let selectedLight = null;
+        let isLightEditing = false;
+        let lightIdCounter = 0;
+        const DEFAULT_LIGHT_SIZE = 0.6;
+        const DEFAULT_LIGHT_INTENSITY = 2.0;
+
+        let pendingPos = null;
+
+        // --- 颜色预设 ---
+        const COLORS = {
+            black: 0x222222,
+            white: 0xf0f0f0,
+            brown: 0x8B4513,
+            default: 0x888888
+        };
+
+        // --- 备用展馆 ---
+        function buildSimpleRoom() {
+            const g = new THREE.Group();
+            const wallMat = new THREE.MeshStandardMaterial({
+                color: 0x3a3a5a, roughness: 0.8, metalness: 0.0, side: THREE
+                    .DoubleSide
+            });
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x2a2a4a, roughness: 0.9, side: THREE.DoubleSide });
+            const ceilMat = new THREE.MeshStandardMaterial({
+                color: 0x2a2a4a, transparent: true, opacity: 0.2, side: THREE
+                    .DoubleSide
+            });
+            const s = 6,
+                h = 3.5;
+
+            const f = new THREE.Mesh(new THREE.PlaneGeometry(s * 2, s * 2), floorMat);
+            f.rotation.x = -Math.PI / 2;
+            f.position.y = -0.5;
+            f.receiveShadow = true;
+            g.add(f);
+
+            [
+                [0, -s, 0],
+                [0, s, Math.PI],
+                [-s, 0, Math.PI / 2],
+                [s, 0, -Math.PI / 2]
+            ].forEach(([x, z, ry]) => {
+                const w = new THREE.Mesh(new THREE.PlaneGeometry(s * 2, h), wallMat);
+                w.position.set(x, h / 2 - 0.5, z);
+                w.rotation.y = ry;
+                w.receiveShadow = true;
+                g.add(w);
+            });
+
+            const c = new THREE.Mesh(new THREE.PlaneGeometry(s * 2, s * 2), ceilMat);
+            c.rotation.x = Math.PI / 2;
+            c.position.y = h - 0.5;
+            g.add(c);
+            return g;
+        }
+
+        const tempRoom = buildSimpleRoom();
+        galleryGroup.add(tempRoom);
+
+        // --- 加载 mm.dae ---
+        const MODEL_PATH = './mm.dae';
+        const loader = new ColladaLoader();
+        let loadingHidden = false;
+
+        function applyDarkColor(obj) {
+            obj.traverse((child) => {
+                if (child.isMesh) {
+                    const mats = Array.isArray(child.material) ? child.material : [child.material];
+                    mats.forEach(mat => {
+                        if (child.position.y < -0.3) {
+                            mat.color.setHex(0x2a2a4a);
+                        } else if (child.position.y > 3.0) {
+                            mat.color.setHex(0x2a2a4a);
+                            mat.transparent = true;
+                            mat.opacity = 0.2;
+                        } else {
+                            mat.color.setHex(0x3a3a5a);
+                        }
+                        if (mat.emissive) mat.emissive.setHex(0x000000);
+                        mat.roughness = 0.7;
+                        mat.metalness = 0.0;
+                    });
+                }
+            });
+        }
+
+        function hideLoading() {
+            if (loadingHidden) return;
+            loadingHidden = true;
+            setTimeout(() => loading.classList.add('hide'), 300);
+        }
+
+        function orientImageVertical(mesh) {
+            const dir = new THREE.Vector3();
+            camera.getWorldDirection(dir);
+            dir.y = 0;
+            if (dir.lengthSq() < 0.0001) dir.set(0, 0, 1);
+            dir.normalize();
+            mesh.userData.normal = dir.clone();
+            mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
+            const height = mesh.userData.sz || 1.0;
+            mesh.position.y = height / 2 + 0.02;
+        }
+
+        loader.load(MODEL_PATH,
+            (collada) => {
+                while (galleryGroup.children.length) {
+                    const c = galleryGroup.children[0];
+                    galleryGroup.remove(c);
+                    if (c.geometry) c.geometry.dispose();
+                    if (c.material) c.material.dispose();
+                }
+                const model = collada.scene;
+                galleryGroup.add(model);
+                modelLoaded = true;
+                loadStatus.textContent = '✅ 模型加载成功！';
+                controls.target.copy(START_TARGET);
+                controls.update();
+                hideLoading();
+                showToast('✅ mm.dae 模型已加载', 2000);
+            },
+            (xhr) => {
+                const pct = Math.round((xhr.loaded / xhr.total) * 100);
+                loadStatus.textContent = `加载模型 ${pct}%...`;
+            },
+            () => {
+                modelLoaded = true;
+                loadStatus.textContent = '✅ 使用备用展馆';
+                hideLoading();
+            }
+        );
+
+        setTimeout(() => {
+            if (!loadingHidden) {
+                modelLoaded = true;
+                loadStatus.textContent = '✅ 使用备用展馆';
+                hideLoading();
+            }
+        }, 5000);
+
+        const grid = new THREE.GridHelper(12, 16, 0x666688, 0x444466);
+        grid.position.y = -0.49;
+        grid.material.transparent = true;
+        grid.material.opacity = 0.2;
+        scene.add(grid);
+
+        // ============================================================
+        //  创建几何体
+        // ============================================================
+        function createGeometry(type, pos, normal, color) {
+            let geometry;
+            const s = 0.6;
+            switch (type) {
+                case 'cube':
+                    geometry = new THREE.BoxGeometry(s, s, s);
+                    break;
+                case 'box':
+                    geometry = new THREE.BoxGeometry(s * 1.5, s * 0.6, s * 0.8);
+                    break;
+                default:
+                    geometry = new THREE.BoxGeometry(s, s, s);
+            }
+
+            const matColor = color || COLORS.default;
+            const mat = new THREE.MeshStandardMaterial({
+                color: matColor,
+                roughness: 0.5,
+                metalness: 0.1
+            });
+            const mesh = new THREE.Mesh(geometry, mat);
+
+            const offsetPos = pos.clone();
+            if (normal && normal.length() > 0.001) {
+                offsetPos.add(normal.clone().normalize().multiplyScalar(0.02));
+            }
+            mesh.position.copy(offsetPos);
+            mesh.quaternion.identity();
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+
+            const borderMat = new THREE.LineBasicMaterial({ color: 0x88ddff, transparent: true, opacity: 0 });
+            const border = new THREE.LineSegments(new THREE.EdgesGeometry(geometry), borderMat);
+            mesh.add(border);
+
+            const displayName = type === 'cube' ? '正方体' : '长方体';
+
+            mesh.userData = {
+                isObject: true,
+                id: ++objectIdCounter,
+                type: type,
+                name: displayName,
+                color: matColor,
+                normal: normal ? normal.clone() : null,
+                border: border,
+                borderMat: borderMat,
+                originalColor: matColor,
+                scale: { x: 1, y: 1, z: 1 }
+            };
+
+            scene.add(mesh);
+            customObjects.push(mesh);
+            pushHistory(`放置 ${displayName}`, { obj: mesh });
+            return mesh;
+        }
+
+        // ============================================================
+        //  创建图片
+        // ============================================================
+        function createImage(file, pos, normal, sz) {
+            return new Promise((resolve) => {
+                const loadTextureFromUrl = (url) => {
+                    const textureLoader = new THREE.TextureLoader();
+                    textureLoader.load(url, (tex) => {
+                        const asp = tex.image.width / tex.image.height;
+                        const geo = new THREE.PlaneGeometry(sz * asp, sz);
+                        const mat = new THREE.MeshStandardMaterial({
+                            map: tex,
+                            side: THREE.DoubleSide,
+                            transparent: true,
+                            roughness: 0.3
+                        });
+                        const mesh = new THREE.Mesh(geo, mat);
+                        const offsetPos = pos.clone();
+                        if (normal && normal.length() > 0.001) {
+                            offsetPos.add(normal.clone().normalize().multiplyScalar(0.03));
+                        }
+                        mesh.position.copy(offsetPos);
+                        if (normal && normal.length() > 0.001) {
+                            mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal.clone().normalize());
+                        }
+                        mesh.castShadow = true;
+                        mesh.receiveShadow = true;
+                        const bmat = new THREE.LineBasicMaterial({ color: 0x4a7ab5, transparent: true, opacity: 0 });
+                        const b = new THREE.LineSegments(new THREE.EdgesGeometry(geo), bmat);
+                        mesh.add(b);
+                        mesh.userData = {
+                            isImage: true,
+                            id: ++imageIdCounter,
+                            blob: typeof url === 'string' && url.startsWith('blob:'),
+                            url: url,
+                            sz: sz,
+                            asp: asp,
+                            normal: normal ? normal.clone() : null,
+                            border: b,
+                            bmat: bmat
+                        };
+                        scene.add(mesh);
+                        images.push(mesh);
+                        resolve(mesh);
+                    }, undefined, () => {
+                        showToast('❌ 图片加载失败，使用占位色块', 1500);
+                        const geo = new THREE.PlaneGeometry(sz, sz);
+                        const mat = new THREE.MeshStandardMaterial({
+                            color: 0xff6644,
+                            side: THREE.DoubleSide,
+                            transparent: true,
+                            opacity: 0.8
+                        });
+                        const mesh = new THREE.Mesh(geo, mat);
+                        const offsetPos = pos.clone();
+                        if (normal && normal.length() > 0.001) {
+                            offsetPos.add(normal.clone().normalize().multiplyScalar(0.03));
+                        }
+                        mesh.position.copy(offsetPos);
+                        if (normal && normal.length() > 0.001) {
+                            mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal.clone().normalize());
+                        }
+                        const bmat = new THREE.LineBasicMaterial({ color: 0x4a7ab5, transparent: true, opacity: 0 });
+                        const b = new THREE.LineSegments(new THREE.EdgesGeometry(geo), bmat);
+                        mesh.add(b);
+                        mesh.userData = {
+                            isImage: true,
+                            id: ++imageIdCounter,
+                            blob: false,
+                            url: 'placeholder',
+                            sz: sz,
+                            asp: 1,
+                            normal: normal ? normal.clone() : null,
+                            border: b,
+                            bmat: bmat
+                        };
+                        scene.add(mesh);
+                        images.push(mesh);
+                        resolve(mesh);
+                    });
+                };
+
+                if (typeof file === 'string') {
+                    loadTextureFromUrl(file);
+                } else {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        loadTextureFromUrl(event.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        // ============================================================
+        //  创建灯光物体
+        // ============================================================
+        function createLightObject(pos, normal, size = DEFAULT_LIGHT_SIZE, intensity = DEFAULT_LIGHT_INTENSITY) {
+            const group = new THREE.Group();
+
+            const geo = new THREE.PlaneGeometry(size, size);
+            const mat = new THREE.MeshStandardMaterial({
+                color: 0xffeedd,
+                emissive: 0xffdd88,
+                emissiveIntensity: intensity,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.85,
+                roughness: 0.2,
+                metalness: 0.0
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(0, 0, 0);
+            group.add(mesh);
+
+            const pointLight = new THREE.PointLight(0xffdd88, intensity * 1.5, 8);
+            pointLight.position.set(0, 0, 0.1);
+            pointLight.castShadow = true;
+            group.add(pointLight);
+
+            const glowGeo = new THREE.SphereGeometry(0.05, 8, 8);
+            const glowMat = new THREE.MeshBasicMaterial({ color: 0xffdd88, transparent: true, opacity: 0.7 });
+            const glow = new THREE.Mesh(glowGeo, glowMat);
+            glow.position.set(0, 0, 0.15);
+            group.add(glow);
+
+            const borderMat = new THREE.LineBasicMaterial({ color: 0xffaa44, transparent: true, opacity: 0 });
+            const border = new THREE.LineSegments(new THREE.EdgesGeometry(geo), borderMat);
+            group.add(border);
+
+            const offsetPos = pos.clone();
+            if (normal && normal.length() > 0.001) {
+                offsetPos.add(normal.clone().normalize().multiplyScalar(0.02));
+                group.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal.clone().normalize());
+            }
+            group.position.copy(offsetPos);
+
+            group.userData = {
+                isLight: true,
+                id: ++lightIdCounter,
+                size: size,
+                intensity: intensity,
+                normal: normal ? normal.clone().normalize() : new THREE.Vector3(0, 0, 1),
+                mesh: mesh,
+                pointLight: pointLight,
+                border: border,
+                borderMat: borderMat,
+                glow: glow
+            };
+
+            scene.add(group);
+            lightObjects.push(group);
+            pushHistory('放置灯光', { obj: group });
+            return group;
+        }
+
+        // ============================================================
+        //  编辑模式 - 几何体
+        // ============================================================
+        function selectObject(mesh) {
+            if (selectedObject && selectedObject !== mesh) deselectObject();
+            selectedObject = mesh;
+            isEditing = true;
+            if (mesh.userData.borderMat) {
+                mesh.userData.borderMat.opacity = 0.8;
+                mesh.userData.borderMat.color.setHex(0x88ddff);
+            }
+            status.classList.add('show');
+            status.textContent = `📐 ${mesh.userData.name} 编辑中`;
+            controls.enableZoom = false;
+            controls.enablePan = false;
+            controls.enableRotate = false;
+            showToast(`📐 ${mesh.userData.name} #${mesh.userData.id} 编辑中`, 1000);
+            showScaleHandles(mesh);
+        }
+
+        function deselectObject() {
+            if (selectedObject && selectedObject.userData.borderMat) {
+                selectedObject.userData.borderMat.opacity = 0;
+            }
+            selectedObject = null;
+            isEditing = false;
+            status.classList.remove('show');
+            status.textContent = '✏️ 编辑中';
+            controls.enableZoom = false;
+            controls.enablePan = false;
+            controls.enableRotate = true;
+            hideScaleHandles();
+        }
+
+        function removeObject(mesh) {
+            if (mesh === selectedObject) deselectObject();
+            scene.remove(mesh);
+            const i = customObjects.indexOf(mesh);
+            if (i > -1) customObjects.splice(i, 1);
+            mesh.material.dispose();
+            mesh.geometry.dispose();
+            showToast(`🗑️ ${mesh.userData.name} 已删除`);
+        }
+
+        function recolorObject(mesh, colorHex) {
+            const color = new THREE.Color(colorHex);
+            if (Array.isArray(mesh.material)) {
+                mesh.material.forEach(mat => { mat.color.copy(color); });
+            } else {
+                mesh.material.color.copy(color);
+            }
+            mesh.userData.color = colorHex;
+            showToast(`🎨 已染色`, 800);
+        }
+
+        // --- 缩放控制手柄 ---
+        function showScaleHandles(mesh) {
+            if (!mesh) return;
+            const rect = renderer.domElement.getBoundingClientRect();
+            const pos = mesh.position.clone();
+            const vec = pos.clone().project(camera);
+            const x = (vec.x * 0.5 + 0.5) * rect.width;
+            const y = (-vec.y * 0.5 + 0.5) * rect.height;
+            const scale = 120 / (1 + vec.z * 0.5);
+
+            scaleHandles.style.display = 'block';
+            scaleHandles.style.left = (x - 30) + 'px';
+            scaleHandles.style.top = (y - 30) + 'px';
+            scaleHandles.style.width = '60px';
+            scaleHandles.style.height = '60px';
+            scaleHandles._targetMesh = mesh;
+        }
+
+        function hideScaleHandles() {
+            scaleHandles.style.display = 'none';
+            scaleHandles._targetMesh = null;
+        }
+
+        // --- 手柄拖拽 ---
+        let isScaling = false;
+        let scaleAxis = '';
+        let scaleStartMouse = new THREE.Vector2();
+        let scaleStartValues = { x: 1, y: 1, z: 1 };
+        let scaleStartPos = new THREE.Vector3();
+
+        document.querySelectorAll('#scaleHandles .handle').forEach(handle => {
+            handle.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                if (!scaleHandles._targetMesh) return;
+                isScaling = true;
+                scaleAxis = handle.dataset.axis;
+                scaleStartMouse.set(e.clientX, e.clientY);
+                const mesh = scaleHandles._targetMesh;
+                scaleStartValues.x = mesh.scale.x;
+                scaleStartValues.y = mesh.scale.y;
+                scaleStartValues.z = mesh.scale.z;
+                scaleStartPos.copy(mesh.position);
+                document.body.style.cursor = 'pointer';
+            });
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isScaling || !scaleHandles._targetMesh) return;
+            const mesh = scaleHandles._targetMesh;
+            const dx = (e.clientX - scaleStartMouse.x) * 0.005;
+            const dy = (e.clientY - scaleStartMouse.y) * 0.005;
+
+            if (scaleAxis === 'x') {
+                mesh.scale.x = Math.max(0.1, scaleStartValues.x + dx * 2);
+                showToast(`📐 宽度: ${mesh.scale.x.toFixed(2)}`, 300);
+            } else if (scaleAxis === 'y') {
+                mesh.scale.y = Math.max(0.1, scaleStartValues.y - dy * 2);
+                showToast(`📐 高度: ${mesh.scale.y.toFixed(2)}`, 300);
+            } else if (scaleAxis === 'z') {
+                mesh.scale.z = Math.max(0.1, scaleStartValues.z + dx * 2);
+                showToast(`📐 厚度: ${mesh.scale.z.toFixed(2)}`, 300);
+            } else if (scaleAxis === 'xyz') {
+                const delta = (dx + dy) * 0.5;
+                const s = Math.max(0.1, scaleStartValues.x + delta);
+                mesh.scale.set(s, s, s);
+                showToast(`📐 整体缩放: ${s.toFixed(2)}`, 300);
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isScaling) {
+                isScaling = false;
+                document.body.style.cursor = 'default';
+            }
+        });
+
+        // ============================================================
+        //  图片编辑模式
+        // ============================================================
+        function selectImage(mesh) {
+            if (selectedImage && selectedImage !== mesh) deselectImage();
+            selectedImage = mesh;
+            isImageEditing = true;
+            if (mesh.userData.bmat) {
+                mesh.userData.bmat.opacity = 0.8;
+                mesh.userData.bmat.color.setHex(0x4a7ab5);
+            }
+            status.classList.add('show');
+            status.textContent = '🖼️ 图片编辑中';
+            controls.enableZoom = false;
+            controls.enablePan = false;
+            controls.enableRotate = false;
+            showToast(`🖼️ 图片 #${mesh.userData.id} 编辑中`, 1000);
+            showImageResizeHandles(mesh);
+        }
+
+        function deselectImage() {
+            if (selectedImage && selectedImage.userData.bmat) {
+                selectedImage.userData.bmat.opacity = 0;
+            }
+            selectedImage = null;
+            isImageEditing = false;
+            status.classList.remove('show');
+            status.textContent = '✏️ 编辑中';
+            controls.enableZoom = false;
+            controls.enablePan = false;
+            controls.enableRotate = true;
+            hideImageResizeHandles();
+        }
+
+        function removeImage(mesh) {
+            if (mesh === selectedImage) deselectImage();
+            scene.remove(mesh);
+            const i = images.indexOf(mesh);
+            if (i > -1) images.splice(i, 1);
+            if (mesh.material.map && mesh.userData.blob) URL.revokeObjectURL(mesh.userData.url);
+            mesh.material.dispose();
+            mesh.geometry.dispose();
+            showToast('🗑️ 图片已删除');
+        }
+
+        function clearAllImages() {
+            if (!images.length || !confirm('确定删除所有图片吗？')) return;
+            deselectImage();
+            images.forEach(m => {
+                scene.remove(m);
+                m.material.dispose();
+                m.geometry.dispose();
+            });
+            images.length = 0;
+            showToast('🗑️ 所有图片已清空');
+        }
+
+        function updateImageSize(mesh, s) {
+            const asp = mesh.userData.asp || 1;
+            const g = new THREE.PlaneGeometry(s * asp, s);
+            mesh.geometry.dispose();
+            mesh.geometry = g;
+            const b = mesh.userData.border;
+            if (b) {
+                b.geometry.dispose();
+                b.geometry = new THREE.EdgesGeometry(g);
+            }
+            mesh.userData.sz = s;
+        }
+
+        // --- 图片控制手柄 ---
+        let isImageResizing = false;
+        let imageResizeCorner = '';
+        let imageResizeStartPos = new THREE.Vector2();
+        let imageResizeStartSize = 1.0;
+        let imageResizeStartAspect = 1.0;
+
+        function showImageResizeHandles(mesh) {
+            if (!mesh) return;
+            const rect = renderer.domElement.getBoundingClientRect();
+            const pos = mesh.position.clone();
+            const size = mesh.userData.sz || 1.0;
+            const asp = mesh.userData.asp || 1.0;
+
+            const vec = pos.clone().project(camera);
+            const x = (vec.x * 0.5 + 0.5) * rect.width;
+            const y = (-vec.y * 0.5 + 0.5) * rect.height;
+            const scale = 100 / (1 + vec.z * 0.5);
+
+            const w = size * asp * scale * 0.5;
+            const h = size * scale * 0.5;
+
+            resizeHandles.style.display = 'block';
+            resizeHandles.style.left = (x - w - 7) + 'px';
+            resizeHandles.style.top = (y - h - 7) + 'px';
+            resizeHandles.style.width = (w * 2 + 14) + 'px';
+            resizeHandles.style.height = (h * 2 + 14) + 'px';
+
+            resizeHandles._targetMesh = mesh;
+            resizeHandles._size = size;
+            resizeHandles._asp = asp;
+        }
+
+        function hideImageResizeHandles() {
+            resizeHandles.style.display = 'none';
+            resizeHandles._targetMesh = null;
+        }
+
+        document.querySelectorAll('#resizeHandles .handle').forEach(handle => {
+            handle.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                if (!resizeHandles._targetMesh) return;
+                isImageResizing = true;
+                imageResizeCorner = handle.dataset.corner;
+                imageResizeStartPos.set(e.clientX, e.clientY);
+                imageResizeStartSize = resizeHandles._size || 1.0;
+                imageResizeStartAspect = resizeHandles._asp || 1.0;
+                document.body.style.cursor = 'nwse-resize';
+            });
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isImageResizing || !resizeHandles._targetMesh) return;
+            const mesh = resizeHandles._targetMesh;
+            const dx = (e.clientX - imageResizeStartPos.x) * 0.01;
+            const dy = (e.clientY - imageResizeStartPos.y) * 0.01;
+
+            let newSize = imageResizeStartSize;
+            if (imageResizeCorner === 'br' || imageResizeCorner === 'tr') {
+                newSize = Math.max(0.2, imageResizeStartSize + dx * 0.3);
+            } else if (imageResizeCorner === 'bl' || imageResizeCorner === 'tl') {
+                newSize = Math.max(0.2, imageResizeStartSize - dx * 0.3);
+            }
+
+            const asp = mesh.userData.asp || 1.0;
+            const geo = new THREE.PlaneGeometry(newSize * asp, newSize);
+            mesh.geometry.dispose();
+            mesh.geometry = geo;
+            const border = mesh.userData.border;
+            if (border) {
+                border.geometry.dispose();
+                border.geometry = new THREE.EdgesGeometry(geo);
+            }
+            mesh.userData.sz = newSize;
+
+            resizeHandles._size = newSize;
+            showImageResizeHandles(mesh);
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isImageResizing) {
+                isImageResizing = false;
+                document.body.style.cursor = 'default';
+                if (resizeHandles._targetMesh) {
+                    showImageResizeHandles(resizeHandles._targetMesh);
+                }
+            }
+        });
+
+        // ============================================================
+        //  灯光编辑
+        // ============================================================
+        function selectLight(group) {
+            if (selectedLight && selectedLight !== group) deselectLight();
+            selectedLight = group;
+            isLightEditing = true;
+            if (group.userData.borderMat) {
+                group.userData.borderMat.opacity = 0.8;
+                group.userData.borderMat.color.setHex(0xffaa44);
+            }
+            status.classList.add('show');
+            status.textContent = '💡 灯光编辑中';
+            controls.enableZoom = false;
+            controls.enablePan = false;
+            controls.enableRotate = false;
+            showToast(`💡 灯光 #${group.userData.id} 编辑中`, 1000);
+        }
+
+        function deselectLight() {
+            if (selectedLight && selectedLight.userData.borderMat) {
+                selectedLight.userData.borderMat.opacity = 0;
+            }
+            selectedLight = null;
+            isLightEditing = false;
+            status.classList.remove('show');
+            status.textContent = '✏️ 编辑中';
+            controls.enableZoom = false;
+            controls.enablePan = false;
+            controls.enableRotate = true;
+        }
+
+        function removeLight(group) {
+            if (group === selectedLight) deselectLight();
+            scene.remove(group);
+            const i = lightObjects.indexOf(group);
+            if (i > -1) lightObjects.splice(i, 1);
+            group.children.forEach(child => {
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+                if (child.dispose) child.dispose();
+            });
+            showToast('💡 灯光已删除');
+        }
+
+        function updateLightSize(group, s) {
+            const newSize = Math.max(0.1, s);
+            const mesh = group.userData.mesh;
+            const pointLight = group.userData.pointLight;
+            const border = group.userData.border;
+
+            const geo = new THREE.PlaneGeometry(newSize, newSize);
+            mesh.geometry.dispose();
+            mesh.geometry = geo;
+            if (border) {
+                border.geometry.dispose();
+                border.geometry = new THREE.EdgesGeometry(geo);
+            }
+            if (pointLight) {
+                pointLight.distance = newSize * 6;
+            }
+            group.userData.size = newSize;
+        }
+
+        function updateLightIntensity(group, intensity) {
+            const newIntensity = Math.max(0.1, intensity);
+            const mesh = group.userData.mesh;
+            const pointLight = group.userData.pointLight;
+            mesh.material.emissiveIntensity = newIntensity;
+            if (pointLight) {
+                pointLight.intensity = newIntensity * 1.5;
+            }
+            group.userData.intensity = newIntensity;
+        }
+
+        function clearAllLights() {
+            if (!lightObjects.length || !confirm('确定删除所有灯光吗？')) return;
+            deselectLight();
+            lightObjects.forEach(group => {
+                scene.remove(group);
+                group.children.forEach(child => {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                    if (child.dispose) child.dispose();
+                });
+            });
+            lightObjects.length = 0;
+            showToast('🗑️ 所有灯光已清空');
+        }
+
+        // ============================================================
+        //  射线检测
+        // ============================================================
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        function getHit(e, includeObjects = true) {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const objs = [];
+            scene.traverse(c => {
+                if (c.isMesh && (includeObjects || !c.userData?.isObject && !c.userData?.isLight && !c.userData
+                    ?.isImage)) objs.push(c);
+            });
+            lightObjects.forEach(group => {
+                group.children.forEach(child => {
+                    if (child.isMesh) objs.push(child);
+                });
+            });
+            waypointMarkers.forEach(m => {
+                m.children.forEach(child => { if (child.isMesh) objs.push(child); });
+            });
+            const hits = raycaster.intersectObjects(objs, true);
+            return hits.length ? hits[0] : null;
+        }
+
+        function findObject(obj) {
+            while (obj) {
+                if (obj.userData?.isObject) return obj;
+                obj = obj.parent;
+            }
+            return null;
+        }
+
+        function findImage(obj) {
+            while (obj) {
+                if (obj.userData?.isImage) return obj;
+                obj = obj.parent;
+            }
+            return null;
+        }
+
+        function findLight(obj) {
+            let parent = obj;
+            while (parent) {
+                if (parent.userData && parent.userData.isLight) return parent;
+                parent = parent.parent;
+            }
+            return null;
+        }
+
+        function findWaypoint(obj) {
+            let parent = obj;
+            while (parent) {
+                if (parent.userData && parent.userData.isWaypoint) return parent;
+                parent = parent.parent;
+            }
+            return null;
+        }
+
+        // ============================================================
+        //  鼠标事件
+        // ============================================================
+
+        renderer.domElement.addEventListener('click', (e) => {
+            if (coordToast.classList.contains('show')) return;
+            if (isDraggingToPlace) return;
+
+            const hit = getHit(e, true);
+            if (!hit) return;
+
+            const waypoint = findWaypoint(hit.object);
+            if (waypoint) {
+                moveToWaypoint(waypoint.position);
+                return;
+            }
+
+            const obj = findObject(hit.object);
+            const light = findLight(hit.object);
+            const img = findImage(hit.object);
+
+            if (obj && isEditing && obj === selectedObject) {
+                return;
+            }
+            if (light && isLightEditing && light === selectedLight) {
+                return;
+            }
+            if (img && isImageEditing && img === selectedImage) {
+                return;
+            }
+
+            deselectObject();
+            deselectLight();
+            deselectImage();
+        });
+
+        // --- 双击 ---
+        renderer.domElement.addEventListener('dblclick', (e) => {
+            if (coordToast.classList.contains('show')) return;
+            if (isDraggingToPlace) return;
+
+            const hit = getHit(e, true);
+            if (!hit) {
+                deselectObject();
+                deselectLight();
+                deselectImage();
+                hideScaleHandles();
+                hideImageResizeHandles();
+                return;
+            }
+
+            const obj = findObject(hit.object);
+            if (obj) {
+                deselectLight();
+                deselectImage();
+                selectObject(obj);
+                return;
+            }
+
+            const img = findImage(hit.object);
+            if (img) {
+                deselectObject();
+                deselectLight();
+                selectImage(img);
+                return;
+            }
+
+            const light = findLight(hit.object);
+            if (light) {
+                deselectObject();
+                deselectImage();
+                selectLight(light);
+                return;
+            }
+
+            deselectObject();
+            deselectLight();
+            deselectImage();
+            hideScaleHandles();
+            hideImageResizeHandles();
+        });
+
+        // ============================================================
+        //  ✅ 右键菜单 - 包含"上传图片"和"放置灯光"
+        // ============================================================
+        renderer.domElement.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            if (coordToast.classList.contains('show')) return;
+            if (isDraggingToPlace) return;
+
+            const hit = getHit(e, true);
+
+            // 检查几何体
+            const obj = findObject(hit?.object);
+            if (obj) {
+                ctx.style.left = Math.min(e.clientX, window.innerWidth - 170) + 'px';
+                ctx.style.top = Math.min(e.clientY, window.innerHeight - 240) + 'px';
+                $('menuUpload').style.display = 'none';
+                $('menuLight').style.display = 'none';
+                $('menuVertical').style.display = 'none';
+                $('menuColorBlack').style.display = 'flex';
+                $('menuColorWhite').style.display = 'flex';
+                $('menuColorBrown').style.display = 'flex';
+                $('menuDelete').style.display = 'flex';
+                $('menuDelete').textContent = '🗑️ 删除物体';
+                ctx.style.display = 'block';
+                ctx._target = obj;
+                ctx._targetType = 'object';
+                pendingPos = null;
+                return;
+            }
+
+            // 检查图片
+            const img = findImage(hit?.object);
+            if (img) {
+                ctx.style.left = Math.min(e.clientX, window.innerWidth - 170) + 'px';
+                ctx.style.top = Math.min(e.clientY, window.innerHeight - 240) + 'px';
+                $('menuUpload').style.display = 'none';
+                $('menuLight').style.display = 'none';
+                $('menuVertical').style.display = 'flex';
+                $('menuColorBlack').style.display = 'none';
+                $('menuColorWhite').style.display = 'none';
+                $('menuColorBrown').style.display = 'none';
+                $('menuDelete').style.display = 'flex';
+                $('menuDelete').textContent = '🗑️ 删除图片';
+                ctx.style.display = 'block';
+                ctx._target = img;
+                ctx._targetType = 'image';
+                pendingPos = null;
+                return;
+            }
+
+            // 检查灯光
+            const light = findLight(hit?.object);
+            if (light) {
+                ctx.style.left = Math.min(e.clientX, window.innerWidth - 170) + 'px';
+                ctx.style.top = Math.min(e.clientY, window.innerHeight - 240) + 'px';
+                $('menuUpload').style.display = 'none';
+                $('menuLight').style.display = 'none';
+                $('menuColorBlack').style.display = 'none';
+                $('menuColorWhite').style.display = 'none';
+                $('menuColorBrown').style.display = 'none';
+                $('menuDelete').style.display = 'flex';
+                $('menuDelete').textContent = '🗑️ 删除灯光';
+                ctx.style.display = 'block';
+                ctx._target = light;
+                ctx._targetType = 'light';
+                pendingPos = null;
+                return;
+            }
+
+            // ✅ 点击墙面 → 显示"上传图片"和"放置灯光"，仅垂直墙面可放灯
+            if (hit) {
+                const pos = hit.point.clone();
+                const normal = hit.face.normal.clone();
+                normal.transformDirection(hit.object.matrixWorld);
+                const isWallSurface = Math.abs(normal.y) < 0.85;
+                pendingPos = { point: pos, normal: normal };
+                ctx.style.left = Math.min(e.clientX, window.innerWidth - 170) + 'px';
+                ctx.style.top = Math.min(e.clientY, window.innerHeight - 240) + 'px';
+                $('menuUpload').style.display = 'flex';
+                $('menuLight').style.display = isWallSurface ? 'flex' : 'none';
+                $('menuColorBlack').style.display = 'none';
+                $('menuColorWhite').style.display = 'none';
+                $('menuColorBrown').style.display = 'none';
+                $('menuDelete').style.display = 'none';
+                ctx.style.display = 'block';
+                ctx._target = null;
+                ctx._targetType = null;
+            } else {
+                ctx.style.display = 'none';
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!ctx.contains(e.target)) {
+                ctx.style.display = 'none';
+            }
+        });
+
+        // --- 菜单按钮 ---
+        $('menuUpload').addEventListener('click', () => {
+            ctx.style.display = 'none';
+            if (!pendingPos) { showToast('⚠️ 请右键墙面'); return; }
+            fileInput.click();
+        });
+
+        $('menuLight').addEventListener('click', () => {
+            ctx.style.display = 'none';
+            if (!pendingPos) { showToast('⚠️ 请右键墙面'); return; }
+            const pos = pendingPos.point.clone();
+            const normal = pendingPos.normal.clone();
+            createLightObject(pos, normal, DEFAULT_LIGHT_SIZE, DEFAULT_LIGHT_INTENSITY);
+            showToast('💡 灯光已放置', 1000);
+            pendingPos = null;
+        });
+
+        $('menuColorBlack').addEventListener('click', () => {
+            ctx.style.display = 'none';
+            const target = ctx._target;
+            if (target && target.userData.isObject) {
+                recolorObject(target, COLORS.black);
+            }
+            ctx._target = null;
+            ctx._targetType = null;
+        });
+
+        $('menuColorWhite').addEventListener('click', () => {
+            ctx.style.display = 'none';
+            const target = ctx._target;
+            if (target && target.userData.isObject) {
+                recolorObject(target, COLORS.white);
+            }
+            ctx._target = null;
+            ctx._targetType = null;
+        });
+
+        $('menuColorBrown').addEventListener('click', () => {
+            ctx.style.display = 'none';
+            const target = ctx._target;
+            if (target && target.userData.isObject) {
+                recolorObject(target, COLORS.brown);
+            }
+            ctx._target = null;
+            ctx._targetType = null;
+        });
+
+        $('menuDelete').addEventListener('click', () => {
+            ctx.style.display = 'none';
+            const target = ctx._target;
+            const type = ctx._targetType;
+            if (target) {
+                if (type === 'object') {
+                    removeObject(target);
+                    deselectObject();
+                    hideScaleHandles();
+                } else if (type === 'image') {
+                    removeImage(target);
+                    deselectImage();
+                    hideImageResizeHandles();
+                } else if (type === 'light') {
+                    removeLight(target);
+                    deselectLight();
+                }
+            }
+            ctx._target = null;
+            ctx._targetType = null;
+        });
+
+        $('menuVertical').addEventListener('click', () => {
+            ctx.style.display = 'none';
+            const target = ctx._target;
+            if (target && target.userData.isImage) {
+                orientImageVertical(target);
+                showToast('🖼️ 图片已垂直于地面', 1200);
+            }
+            ctx._target = null;
+            ctx._targetType = null;
+        });
+
+        $('menuCancel').addEventListener('click', () => {
+            ctx.style.display = 'none';
+            pendingPos = null;
+            ctx._target = null;
+            ctx._targetType = null;
+        });
+
+        // ============================================================
+        //  文件上传（图片）
+        // ============================================================
+        fileInput.addEventListener('change', async (e) => {
+            const files = e.target.files;
+            if (!files.length) { fileInput.value = ''; return; }
+
+            let pos, normal;
+            if (pendingPos) {
+                pos = pendingPos.point.clone();
+                normal = pendingPos.normal.clone();
+                pendingPos = null;
+            } else {
+                const dir = new THREE.Vector3();
+                camera.getWorldDirection(dir);
+                pos = camera.position.clone().add(dir.multiplyScalar(3));
+                normal = new THREE.Vector3(0, 0, -1);
+            }
+
+            let count = 0;
+            for (const f of files) {
+                if (!f.type.startsWith('image/')) continue;
+                const mesh = await createImage(f, pos.clone(), normal, defaultImageSize);
+                if (mesh) {
+                    count++;
+                    pos.x += 0.3;
+                }
+            }
+            fileInput.value = '';
+            showToast(count ? `✅ 上传 ${count} 张图片` : '❌ 上传失败');
+            deselectImage();
+            hideImageResizeHandles();
+        });
+
+        // ============================================================
+        //  拖拽放置 - 几何体
+        // ============================================================
+        let isDraggingToPlace = false;
+        let dragType = 'cube';
+        let dragObject = null;
+        let dragNormal = new THREE.Vector3(0, 1, 0);
+
+        function startDragging(type) {
+            if (isDraggingToPlace) return;
+            isDraggingToPlace = true;
+            dragType = type;
+
+            let geometry;
+            const s = 0.6;
+            if (type === 'cube') {
+                geometry = new THREE.BoxGeometry(s, s, s);
+            } else {
+                geometry = new THREE.BoxGeometry(s * 1.5, s * 0.6, s * 0.8);
+            }
+
+            const mat = new THREE.MeshStandardMaterial({
+                color: 0x888888,
+                transparent: true,
+                opacity: 0.5,
+                roughness: 0.5
+            });
+            dragObject = new THREE.Mesh(geometry, mat);
+            dragObject.position.copy(camera.position).add(new THREE.Vector3(0, 0, -2));
+            scene.add(dragObject);
+
+            const btnMap = { cube: 'btnCube', box: 'btnBox' };
+            document.querySelectorAll('#leftToolbar .tool-btn').forEach(b => b.classList.remove('drag-mode'));
+            const activeBtn = $(btnMap[type]);
+            if (activeBtn) activeBtn.classList.add('drag-mode');
+
+            const name = type === 'cube' ? '正方体' : '长方体';
+            showToast(`📦 拖拽 ${name} 到场景中放置，点击放置`, 2000);
+            controls.enableRotate = false;
+            controls.enableZoom = false;
+            renderer.domElement.style.cursor = 'crosshair';
+        }
+
+        function updateDragPosition(event) {
+            if (!isDraggingToPlace || !dragObject) return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            const objs = [];
+            scene.traverse(c => {
+                if (c.isMesh && !c.userData?.isObject && !c.userData?.isLight && !c.userData?.isImage) objs
+                    .push(c);
+            });
+            const hits = raycaster.intersectObjects(objs, true);
+
+            if (hits.length > 0) {
+                const hit = hits[0];
+                const pos = hit.point.clone();
+                const normal = hit.face.normal.clone();
+                normal.transformDirection(hit.object.matrixWorld);
+
+                const offset = normal.clone().multiplyScalar(0.05);
+                pos.add(offset);
+
+                pos.x = Math.round(pos.x / 0.2) * 0.2;
+                pos.y = Math.round(pos.y / 0.2) * 0.2;
+                pos.z = Math.round(pos.z / 0.2) * 0.2;
+
+                if (normal.y > 0.8) {
+                    pos.y += 0.3;
+                }
+
+                dragObject.position.copy(pos);
+                dragNormal.copy(normal);
+                dragObject.quaternion.identity();
+
+                dragObject.material.opacity = 0.8;
+                dragObject.material.color.setHex(0x44ff44);
+            } else {
+                const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 2);
+                const intersect = new THREE.Vector3();
+                raycaster.ray.intersectPlane(plane, intersect);
+                if (intersect) {
+                    dragObject.position.copy(intersect);
+                    dragNormal.set(0, 1, 0);
+                    dragObject.quaternion.identity();
+                }
+                dragObject.material.opacity = 0.5;
+                dragObject.material.color.setHex(0x888888);
+            }
+        }
+
+        function endDragging() {
+            if (!isDraggingToPlace || !dragObject) return;
+
+            const pos = dragObject.position.clone();
+            const normal = dragNormal.clone();
+
+            scene.remove(dragObject);
+            const obj = createGeometry(dragType, pos, normal, COLORS.default);
+
+            isDraggingToPlace = false;
+            dragObject = null;
+            document.querySelectorAll('#leftToolbar .tool-btn').forEach(b => b.classList.remove('drag-mode'));
+            controls.enableRotate = true;
+            controls.enableZoom = false;
+            renderer.domElement.style.cursor = 'default';
+
+            showToast(`✅ ${obj.userData.name} 已放置`, 1000);
+        }
+
+        function cancelDragging() {
+            if (dragObject) {
+                scene.remove(dragObject);
+                dragObject = null;
+            }
+            isDraggingToPlace = false;
+            document.querySelectorAll('#leftToolbar .tool-btn').forEach(b => b.classList.remove('drag-mode'));
+            controls.enableRotate = true;
+            controls.enableZoom = false;
+            renderer.domElement.style.cursor = 'default';
+            showToast('❌ 已取消放置', 1000);
+        }
+
+        // --- 按钮 ---
+        $('btnCube').addEventListener('click', () => startDragging('cube'));
+        $('btnBox').addEventListener('click', () => startDragging('box'));
+
+        $('btnImportModel').addEventListener('click', () => {
+            if (!pendingPos) { showToast('⚠️ 请先右键墙面或地面选择位置', 1500); return; }
+            modelInput.click();
+        });
+
+        // --- 鼠标移动更新拖拽 ---
+        renderer.domElement.addEventListener('mousemove', (e) => {
+            if (isDraggingToPlace) {
+                updateDragPosition(e);
+            }
+        });
+
+        renderer.domElement.addEventListener('click', (e) => {
+            if (isDraggingToPlace) {
+                e.stopPropagation();
+                endDragging();
+                return;
+            }
+        });
+
+        renderer.domElement.addEventListener('contextmenu', (e) => {
+            if (isDraggingToPlace) {
+                e.preventDefault();
+                cancelDragging();
+                return;
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && isDraggingToPlace) {
+                cancelDragging();
+                e.preventDefault();
+            }
+        });
+
+        // --- 导入模型 ---
+        modelInput.addEventListener('change', async (e) => {
+            const files = e.target.files;
+            if (!files.length) { modelInput.value = ''; return; }
+
+            const file = files[0];
+            const ext = file.name.split('.').pop().toLowerCase();
+
+            let pos, normal;
+            if (pendingPos) {
+                pos = pendingPos.point.clone();
+                normal = pendingPos.normal.clone();
+                pendingPos = null;
+            } else {
+                const dir = new THREE.Vector3();
+                camera.getWorldDirection(dir);
+                pos = camera.position.clone().add(dir.multiplyScalar(3));
+                normal = new THREE.Vector3(0, 1, 0);
+            }
+
+            try {
+                let model;
+                const url = URL.createObjectURL(file);
+
+                if (ext === 'glb' || ext === 'gltf') {
+                    const gltfLoader = new GLTFLoader();
+                    model = await new Promise((resolve, reject) => {
+                        gltfLoader.load(url, (gltf) => resolve(gltf.scene), undefined, reject);
+                    });
+                } else if (ext === 'dae') {
+                    const daeLoader = new ColladaLoader();
+                    model = await new Promise((resolve, reject) => {
+                        daeLoader.load(url, (collada) => resolve(collada.scene), undefined, reject);
+                    });
+                } else if (ext === 'obj') {
+                    const objLoader = new OBJLoader();
+                    model = await new Promise((resolve, reject) => {
+                        objLoader.load(url, (obj) => resolve(obj), undefined, reject);
+                    });
+                } else {
+                    showToast('❌ 不支持的格式: ' + ext, 2000);
+                    modelInput.value = '';
+                    return;
+                }
+
+                model.position.copy(pos);
+                if (normal && normal.length() > 0.001 && Math.abs(normal.y) < 0.9) {
+                    const up = new THREE.Vector3(0, 1, 0);
+                    const quat = new THREE.Quaternion().setFromUnitVectors(up, normal);
+                    model.quaternion.copy(quat);
+                }
+
+                model.traverse((child) => {
+                    if (child.isMesh) {
+                        const borderMat = new THREE.LineBasicMaterial({
+                            color: 0x88ddff, transparent: true,
+                            opacity: 0
+                        });
+                        const border = new THREE.LineSegments(new THREE.EdgesGeometry(child.geometry),
+                            borderMat);
+                        child.add(border);
+                        child.userData.borderMat = borderMat;
+                    }
+                });
+
+                model.userData = {
+                    isObject: true,
+                    id: ++objectIdCounter,
+                    name: file.name,
+                    color: color,
+                    normal: normal ? normal.clone() : null,
+                    originalColor: color,
+                    isImported: true
+                };
+
+                scene.add(model);
+                customObjects.push(model);
+                pushHistory(`导入 ${file.name}`, { obj: model });
+                showToast(`✅ 已导入: ${file.name}`, 2000);
+
+            } catch (err) {
+                console.error('导入失败:', err);
+                showToast('❌ 导入失败: ' + err.message, 2000);
+            }
+
+            modelInput.value = '';
+        });
+
+        // ============================================================
+        //  滚轮控制
+        // ============================================================
+        renderer.domElement.addEventListener('wheel', (e) => {
+            if (isLightEditing && selectedLight) {
+                e.preventDefault();
+                if (e.ctrlKey) {
+                    const d = e.deltaY > 0 ? -0.2 : 0.2;
+                    const newIntensity = Math.max(0.1, selectedLight.userData.intensity + d);
+                    updateLightIntensity(selectedLight, newIntensity);
+                    showToast(`💡 亮度: ${newIntensity.toFixed(1)}`, 500);
+                } else {
+                    const d = e.deltaY > 0 ? -0.1 : 0.1;
+                    const newSize = Math.max(0.1, selectedLight.userData.size + d);
+                    updateLightSize(selectedLight, newSize);
+                    showToast(`📏 大小: ${newSize.toFixed(1)}`, 500);
+                }
+                return;
+            }
+
+            if (isEditing && selectedObject) {
+                e.preventDefault();
+                const d = e.deltaY > 0 ? 0.05 : -0.05;
+                selectedObject.rotation.y += d;
+                showToast(`🔄 ${(selectedObject.rotation.y * 180 / Math.PI % 360).toFixed(0)}°`, 500);
+                return;
+            }
+        }, { passive: false });
+
+        // ============================================================
+        //  拖拽移动
+        // ============================================================
+        let isDragging = false;
+        let isResizingLight = false;
+        let dragStart = new THREE.Vector2();
+        let dragOrigin = new THREE.Vector3();
+        let dragPlane = new THREE.Plane();
+        let dragIntersect = new THREE.Vector3();
+        let dragTarget = null;
+        let dragTargetType = '';
+        let dragOriginSize = 0;
+        let dragOriginIntensity = 0;
+
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            if (ctx.style.display === 'block') return;
+            if (isScaling) return;
+            if (isImageResizing) return;
+            if (isDraggingToPlace) return;
+
+            const hit = getHit(e, true);
+            if (!hit) return;
+
+            const obj = findObject(hit.object);
+            const light = findLight(hit.object);
+            const img = findImage(hit.object);
+
+            if (obj && isEditing && obj === selectedObject) {
+                dragTarget = obj;
+                dragTargetType = 'object';
+                isResizingLight = false;
+            } else if (light && isLightEditing && light === selectedLight) {
+                dragTarget = light;
+                dragTargetType = 'light';
+                isResizingLight = e.ctrlKey;
+                if (isResizingLight) {
+                    dragOriginSize = light.userData.size;
+                    dragOriginIntensity = light.userData.intensity;
+                }
+            } else if (img && isImageEditing && img === selectedImage) {
+                dragTarget = img;
+                dragTargetType = 'image';
+                isResizingLight = false;
+            } else {
+                return;
+            }
+
+            isDragging = true;
+            dragStart.set(e.clientX, e.clientY);
+            dragOrigin.copy(dragTarget.position);
+            if (!isResizingLight) {
+                if (dragTargetType === 'light') {
+                    const normal = dragTarget.userData.normal || new THREE.Vector3(0, 1, 0);
+                    dragPlane.setFromNormalAndCoplanarPoint(normal, dragTarget.position);
+                } else {
+                    const dir = new THREE.Vector3();
+                    camera.getWorldDirection(dir);
+                    dragPlane.setFromNormalAndCoplanarPoint(dir, dragTarget.position);
+                }
+                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                raycaster.ray.intersectPlane(dragPlane, dragIntersect);
+                renderer.domElement.style.cursor = 'grabbing';
+            } else {
+                renderer.domElement.style.cursor = 'ns-resize';
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging || !dragTarget) return;
+            if (dragTargetType === 'light' && isResizingLight) {
+                const dy = dragStart.y - e.clientY;
+                const delta = dy * 0.01;
+                const newSize = Math.max(0.1, dragOriginSize + delta);
+                const newIntensity = Math.max(0.1, dragOriginIntensity + delta * 0.8);
+                updateLightSize(dragTarget, newSize);
+                updateLightIntensity(dragTarget, newIntensity);
+                showToast(`📏 大小 ${newSize.toFixed(2)} / 亮度 ${newIntensity.toFixed(1)}`, 200);
+                return;
+            }
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const p = new THREE.Vector3();
+            raycaster.ray.intersectPlane(dragPlane, p);
+            if (p) {
+                const off = p.clone().sub(dragIntersect);
+                const n = dragTarget.userData.normal || new THREE.Vector3(0, 1, 0);
+                off.add(n.clone().multiplyScalar(-off.dot(n)));
+                dragTarget.position.copy(dragOrigin).add(off);
+                if (dragTargetType === 'object') {
+                    showScaleHandles(dragTarget);
+                }
+                if (dragTargetType === 'image') {
+                    showImageResizeHandles(dragTarget);
+                }
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                isResizingLight = false;
+                dragTarget = null;
+                dragTargetType = '';
+                renderer.domElement.style.cursor = 'default';
+            }
+        });
+
+        // ============================================================
+        //  动线点系统 - 修复视角问题
+        // ============================================================
+        function createWaypointMarker(pos, label = '') {
+            const group = new THREE.Group();
+            const ringGeo = new THREE.RingGeometry(0.25, 0.35, 32);
+            const ringMat = new THREE.MeshBasicMaterial({
+                color: 0x88ddff, side: THREE.DoubleSide, transparent: true,
+                opacity: 0.6
+            });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.y = 0.01;
+            group.add(ring);
+            const dotGeo = new THREE.CircleGeometry(0.08, 16);
+            const dotMat = new THREE.MeshBasicMaterial({ color: 0x88ddff });
+            const dot = new THREE.Mesh(dotGeo, dotMat);
+            dot.rotation.x = -Math.PI / 2;
+            dot.position.y = 0.015;
+            group.add(dot);
+            const pillarGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.3, 6);
+            const pillarMat = new THREE.MeshBasicMaterial({ color: 0x88ddff, transparent: true, opacity: 0.25 });
+            const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+            pillar.position.y = 0.15;
+            group.add(pillar);
+            group.position.copy(pos);
+            group.userData = { isWaypoint: true, id: ++waypointId, label: label };
+            scene.add(group);
+            waypointMarkers.push(group);
+            return group;
+        }
+
+        function addWaypointAtCurrentPosition() {
+            if (!modelLoaded) { showToast('⏳ 请等待模型加载完成'); return; }
+            const pos = camera.position.clone();
+            pos.y = 0;
+            createWaypointMarker(pos, `点${waypointId}`);
+            waypoints.push(pos);
+            showToast(`📍 动线点 #${waypointId} 已添加`, 2000);
+            return pos;
+        }
+
+        function clearWaypoints() {
+            if (waypointMarkers.length === 0) { showToast('没有动线点'); return; }
+            if (!confirm('确定清空所有动线点吗？')) return;
+            waypointMarkers.forEach(m => {
+                scene.remove(m);
+                m.children.forEach(c => {
+                    if (c.geometry) c.geometry.dispose(); if (c.material) c.material
+                        .dispose();
+                });
+            });
+            waypointMarkers.length = 0;
+            waypoints.length = 0;
+            waypointId = 0;
+            showToast('🗑️ 已清空所有动线点');
+        }
+
+        let isMoving = false;
+        let moveStart = new THREE.Vector3();
+        let moveEnd = new THREE.Vector3();
+        let moveTargetStart = new THREE.Vector3();
+        let moveTargetEnd = new THREE.Vector3();
+        let moveProgress = 0;
+        const MOVE_DURATION = 0.8;
+
+        function moveToWaypoint(targetPos) {
+            if (isMoving) return;
+            if (!modelLoaded) { showToast('⏳ 请等待模型加载完成'); return; }
+            const endPos = targetPos.clone();
+            endPos.y = camera.position.y;
+
+            const offset = new THREE.Vector3().copy(controls.target).sub(camera.position);
+            const endTarget = endPos.clone().add(offset);
+
+            moveStart.copy(camera.position);
+            moveEnd.copy(endPos);
+            moveTargetStart.copy(controls.target);
+            moveTargetEnd.copy(endTarget);
+            moveProgress = 0;
+            isMoving = true;
+            controls.enableRotate = false;
+            showToast(`🚶 移动到 ${targetPos.x.toFixed(2)}, ${targetPos.z.toFixed(2)}`, 1000);
+        }
+
+        function updateMovement(dt) {
+            if (!isMoving) return;
+            moveProgress += dt / MOVE_DURATION;
+            if (moveProgress >= 1) {
+                moveProgress = 1;
+                isMoving = false;
+                controls.enableRotate = true;
+            }
+            const t = 1 - Math.pow(1 - moveProgress, 3);
+            camera.position.lerpVectors(moveStart, moveEnd, t);
+            controls.target.lerpVectors(moveTargetStart, moveTargetEnd, t);
+        }
+
+        // ============================================================
+        //  视角高度控制 (E/Q)
+        // ============================================================
+        function adjustCameraHeight(delta) {
+            const newHeight = Math.max(0.3, Math.min(8, camera.position.y + delta));
+            const diff = newHeight - camera.position.y;
+            camera.position.y = newHeight;
+            controls.target.y += diff;
+            controls.update();
+            cameraHeight = newHeight;
+            showToast(`👁️ 视角高度: ${newHeight.toFixed(2)}`, 500);
+        }
+
+        // ============================================================
+        //  撤销系统
+        // ============================================================
+        const UNDO_LIMIT = 30;
+        const history = [];
+        let historyIndex = -1;
+
+        function pushHistory(action, data) {
+            if (suppressHistory) return;
+            while (history.length > historyIndex + 1) {
+                history.pop();
+            }
+            history.push({ action, data, timestamp: Date.now() });
+            if (history.length > UNDO_LIMIT) {
+                history.shift();
+            }
+            historyIndex = history.length - 1;
+            updateUndoButton();
+        }
+
+        function undo() {
+            if (historyIndex <= 0) {
+                showToast('⚠️ 没有可以撤销的操作', 1000);
+                return;
+            }
+            const current = history[historyIndex];
+            if (current.data && current.data.obj) {
+                const obj = current.data.obj;
+                if (obj.parent) {
+                    scene.remove(obj);
+                    if (obj.userData.isObject) {
+                        const idx = customObjects.indexOf(obj);
+                        if (idx > -1) customObjects.splice(idx, 1);
+                        if (selectedObject === obj) deselectObject();
+                    }
+                    if (obj.userData.isImage) {
+                        const idx = images.indexOf(obj);
+                        if (idx > -1) images.splice(idx, 1);
+                        if (selectedImage === obj) deselectImage();
+                    }
+                    if (obj.userData.isLight) {
+                        const idx = lightObjects.indexOf(obj);
+                        if (idx > -1) lightObjects.splice(idx, 1);
+                        if (selectedLight === obj) deselectLight();
+                        obj.children.forEach(child => {
+                            if (child.geometry) child.geometry.dispose();
+                            if (child.material) child.material.dispose();
+                            if (child.dispose) child.dispose();
+                        });
+                    }
+                    showToast(`↩️ 撤销: ${current.action}`, 1000);
+                }
+            }
+            historyIndex--;
+            updateUndoButton();
+        }
+
+        function updateUndoButton() {
+            const btn = $('btnUndo');
+            if (btn) {
+                btn.style.opacity = historyIndex <= 0 ? '0.4' : '1';
+                btn.title = historyIndex <= 0 ? '没有可撤销的操作' : `撤销 (${historyIndex} 步)`;
+            }
+        }
+
+        // --- 保存功能 ---
+        function blobToDataURL(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('读取 Blob 为 DataURL 失败'));
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        async function getImagePersistUrl(img) {
+            const url = img.userData.url;
+            if (!url) return '';
+            if (typeof url === 'string' && url.startsWith('blob:')) {
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error('从 blob URL 获取失败');
+                    const blob = await response.blob();
+                    return await blobToDataURL(blob);
+                } catch (err) {
+                    console.warn('Blob URL 转 data URL 失败，保留原 URL:', err);
+                    return url;
+                }
+            }
+            return url;
+        }
+
+        async function saveState() {
+            try {
+                const state = {
+                    objects: customObjects.map(obj => ({
+                        type: obj.userData.type || 'imported',
+                        position: obj.position.toArray(),
+                        rotation: obj.rotation.toArray(),
+                        scale: obj.scale.toArray(),
+                        color: obj.userData.color || 0x888888,
+                        name: obj.userData.name || '物体'
+                    })),
+                    images: await Promise.all(images.map(async img => ({
+                        position: img.position.toArray(),
+                        quaternion: img.quaternion.toArray(),
+                        size: img.userData.sz,
+                        asp: img.userData.asp,
+                        url: await getImagePersistUrl(img),
+                        normal: img.userData.normal ? img.userData.normal.toArray() : null
+                    }))),
+                    lights: lightObjects.map(group => ({
+                        position: group.position.toArray(),
+                        quaternion: group.quaternion.toArray(),
+                        size: group.userData.size,
+                        intensity: group.userData.intensity,
+                        normal: group.userData.normal ? group.userData.normal.toArray() : null
+                    })),
+                    waypoints: waypointMarkers.map(wp => ({
+                        position: wp.position.toArray()
+                    }))
+                };
+
+                const stateJson = JSON.stringify(state, null, 2);
+                const blob = new Blob([stateJson], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `展馆布局_${new Date().toISOString().slice(0, 10)}.json`;
+                a.style.display = 'none';
+                a.target = '_blank';
+                document.body.appendChild(a);
+
+                let downloadSucceeded = true;
+                try {
+                    a.click();
+                } catch (clickErr) {
+                    downloadSucceeded = false;
+                    console.warn('下载点击失败，尝试打开新窗口:', clickErr);
+                    window.open(url, '_blank');
+                }
+
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+
+                if (downloadSucceeded) {
+                    showToast('💾 已保存并下载文件', 1000);
+                } else {
+                    showToast('💾 已生成下载链接，请检查浏览器新窗口或下载工具', 2000);
+                }
+            } catch (err) {
+                console.error('保存失败:', err);
+                showToast('❌ 保存失败: ' + err.message, 3000);
+            }
+        }
+
+        function clearCurrentLayout() {
+            deselectObject();
+            deselectLight();
+            deselectImage();
+
+            customObjects.forEach(obj => {
+                scene.remove(obj);
+                if (obj.geometry) obj.geometry.dispose();
+                if (obj.material) obj.material.dispose();
+            });
+            customObjects.length = 0;
+            objectIdCounter = 0;
+
+            images.forEach(img => {
+                scene.remove(img);
+                if (img.material) img.material.dispose();
+                if (img.geometry) img.geometry.dispose();
+                if (img.userData.blob && img.userData.url) URL.revokeObjectURL(img.userData.url);
+            });
+            images.length = 0;
+            imageIdCounter = 0;
+
+            lightObjects.forEach(group => {
+                scene.remove(group);
+                group.children.forEach(child => {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                    if (child.dispose) child.dispose();
+                });
+            });
+            lightObjects.length = 0;
+            lightIdCounter = 0;
+
+            waypointMarkers.forEach(m => {
+                scene.remove(m);
+                m.children.forEach(c => {
+                    if (c.geometry) c.geometry.dispose();
+                    if (c.material) c.material.dispose();
+                });
+            });
+            waypointMarkers.length = 0;
+            waypoints.length = 0;
+            waypointId = 0;
+
+            history.length = 0;
+            historyIndex = -1;
+            updateUndoButton();
+        }
+
+        function applyLayoutData(data) {
+            if (!data) return;
+            suppressHistory = true;
+            clearCurrentLayout();
+
+            if (data.objects) {
+                data.objects.forEach(item => {
+                    const pos = new THREE.Vector3(...item.position);
+                    const normal = item.normal ? new THREE.Vector3(...item.normal) : new THREE.Vector3(0, 1, 0);
+                    const obj = createGeometry(item.type || 'cube', pos, normal, item.color || 0x888888);
+                    if (item.rotation) {
+                        obj.rotation.fromArray(item.rotation);
+                    }
+                    if (item.scale) {
+                        obj.scale.fromArray(item.scale);
+                    }
+                    if (item.name) {
+                        obj.userData.name = item.name;
+                    }
+                });
+            }
+
+            if (data.images) {
+                data.images.forEach(item => {
+                    const pos = new THREE.Vector3(...item.position);
+                    const normal = item.normal ? new THREE.Vector3(...item.normal) : new THREE.Vector3(0, 1, 0);
+                    const url = item.url || 'https://picsum.photos/400/300?random=' + Date.now();
+                    createImage(url, pos, normal, item.size || 1.0);
+                });
+            }
+
+            if (data.lights) {
+                data.lights.forEach(item => {
+                    const pos = new THREE.Vector3(...item.position);
+                    const normal = item.normal ? new THREE.Vector3(...item.normal) : new THREE.Vector3(0, 1, 0);
+                    const light = createLightObject(pos, normal, item.size || 0.6, item.intensity || 2.0);
+                    if (item.quaternion) {
+                        light.quaternion.fromArray(item.quaternion);
+                    }
+                });
+            }
+
+            if (data.waypoints) {
+                data.waypoints.forEach(item => {
+                    const pos = new THREE.Vector3(...item.position);
+                    createWaypointMarker(pos);
+                });
+            }
+            suppressHistory = false;
+        }
+
+        function loadSavedLayout() {
+            const raw = localStorage.getItem('exhibition_state');
+            if (!raw) return;
+            try {
+                const data = JSON.parse(raw);
+                if (!data || typeof data !== 'object') return;
+                applyLayoutData(data);
+                showToast('📥 已自动恢复上次保存布局', 1500);
+            } catch (err) {
+                console.warn('恢复保存布局失败:', err);
+            }
+        }
+
+        // --- 绑定按钮 ---
+        $('btnUndo').addEventListener('click', undo);
+        $('btnSave').addEventListener('click', saveState);
+
+        // ============================================================
+        //  📤 导出 / 📥 导入
+        // ============================================================
+        async function exportLayout() {
+            try {
+                const data = {
+                    version: '1.0',
+                    timestamp: Date.now(),
+                    objects: customObjects.map(obj => ({
+                        type: obj.userData.type || 'imported',
+                        position: obj.position.toArray(),
+                        rotation: obj.rotation.toArray(),
+                        scale: obj.scale.toArray(),
+                        color: obj.userData.color || 0x888888,
+                        name: obj.userData.name || '物体'
+                    })),
+                    images: await Promise.all(images.map(async img => ({
+                        position: img.position.toArray(),
+                        quaternion: img.quaternion.toArray(),
+                        size: img.userData.sz,
+                        asp: img.userData.asp,
+                        url: await getImagePersistUrl(img),
+                        normal: img.userData.normal ? img.userData.normal.toArray() : null
+                    }))),
+                    lights: lightObjects.map(group => ({
+                        position: group.position.toArray(),
+                        quaternion: group.quaternion.toArray(),
+                        size: group.userData.size,
+                        intensity: group.userData.intensity,
+                        normal: group.userData.normal ? group.userData.normal.toArray() : null
+                    })),
+                    waypoints: waypointMarkers.map(wp => ({
+                        position: wp.position.toArray()
+                    }))
+                };
+
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `展馆布局_${new Date().toISOString().slice(0, 10)}.json`;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+                showToast('📤 布局已导出！', 2000);
+            } catch (err) {
+                console.error('导出失败:', err);
+                showToast('❌ 导出失败: ' + err.message, 3000);
+            }
+        }
+
+        function importLayout(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    applyLayoutData(data);
+                    showToast(
+                        `✅ 导入成功！物体 ${data.objects?.length || 0} 个，图片 ${data.images?.length || 0} 张，灯光 ${data.lights?.length || 0} 个，动线点 ${data.waypoints?.length || 0} 个`,
+                        3000);
+                } catch (err) {
+                    console.error('导入失败:', err);
+                    showToast('❌ 导入失败: 文件格式无效', 2000);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // ============================================================
+        //  按钮绑定
+        // ============================================================
+        $('btnReset').addEventListener('click', () => {
+            if (isOverviewMode) setBrowseMode();
+            else {
+                camera.position.set(START_POS.x, cameraHeight, START_POS.z);
+                controls.target.copy(START_TARGET);
+                controls.update();
+                showToast('📍 回到原点', 800);
+            }
+        });
+
+        $('btnHall3').addEventListener('click', () => {
+            if (isOverviewMode) setBrowseMode();
+            camera.position.copy(HALL3_POS);
+            controls.target.copy(HALL3_TARGET);
+            controls.update();
+            showToast('📍 已切换到场馆3', 800);
+        });
+
+        $('btnOverview').addEventListener('click', () => {
+            isOverviewMode ? setBrowseMode() : setOverviewMode();
+        });
+
+        $('btnGetPos').addEventListener('click', () => {
+            const pos = camera.position;
+            const target = controls.target;
+            const code =
+                `{ pos: new THREE.Vector3(${pos.x.toFixed(3)}, ${pos.y.toFixed(3)}, ${pos.z.toFixed(3)}), target: new THREE.Vector3(${target.x.toFixed(3)}, ${target.y.toFixed(3)}, ${target.z.toFixed(3)}) }`;
+            coordContent.innerHTML = `
+                📍 当前位置<br>
+                <code>${code}</code>
+                <div style="margin-top:6px;font-size:12px;color:#888;">
+                    X: ${pos.x.toFixed(3)} &nbsp;|&nbsp; Y: ${pos.y.toFixed(3)} &nbsp;|&nbsp; Z: ${pos.z.toFixed(3)}
+                </div>
+                <div style="margin-top:4px;font-size:11px;color:#999;">
+                    动线点代码: new THREE.Vector3(${pos.x.toFixed(3)}, 0, ${pos.z.toFixed(3)})
+                </div>
+            `;
+            coordToast.classList.add('show');
+        });
+
+        $('coordClose').addEventListener('click', () => coordToast.classList.remove('show'));
+        coordToast.addEventListener('click', (e) => {
+            if (e.target === coordToast) coordToast.classList.remove('show');
+        });
+
+        $('btnAddWaypoint').addEventListener('click', addWaypointAtCurrentPosition);
+        $('btnClearWaypoints').addEventListener('click', clearWaypoints);
+        $('btnClearLights').addEventListener('click', clearAllLights);
+        $('btnClearImages').addEventListener('click', clearAllImages);
+
+        $('btnExport').addEventListener('click', exportLayout);
+        $('btnImport').addEventListener('click', () => { importInput.click(); });
+
+        importInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) { importLayout(file); }
+            importInput.value = '';
+        });
+
+        loadSavedLayout();
+
+        $('btnToggleLight').addEventListener('click', toggleLights);
+        $('btnGlobalBright').addEventListener('click', toggleGlobalBright);
+
+        const brightnessSlider = $('brightnessSlider');
+        const brightnessValue = $('brightnessValue');
+
+        brightnessSlider.value = '0.70';
+        brightnessValue.textContent = '0.70';
+
+        brightnessSlider.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            brightnessValue.textContent = value.toFixed(2);
+            updateBrightness(value);
+        });
+
+        // --- 清空所有 ---
+        $('btnClearObjects').addEventListener('click', () => {
+            const total = customObjects.length + lightObjects.length + images.length;
+            if (!total || !confirm(`确定删除所有物体、图片和灯光（共 ${total} 个）吗？`)) return;
+            deselectObject();
+            deselectLight();
+            deselectImage();
+            customObjects.forEach(obj => {
+                scene.remove(obj);
+                obj.material.dispose();
+                obj.geometry.dispose();
+            });
+            customObjects.length = 0;
+            objectIdCounter = 0;
+            images.forEach(img => {
+                scene.remove(img);
+                img.material.dispose();
+                img.geometry.dispose();
+                if (img.userData.blob) URL.revokeObjectURL(img.userData.url);
+            });
+            images.length = 0;
+            imageIdCounter = 0;
+            lightObjects.forEach(group => {
+                scene.remove(group);
+                group.children.forEach(child => {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                    if (child.dispose) child.dispose();
+                });
+            });
+            lightObjects.length = 0;
+            lightIdCounter = 0;
+            showToast('🗑️ 已清空所有物体、图片和灯光');
+        });
+
+        // --- 模式切换 ---
+        function setBrowseMode() {
+            isOverviewMode = false;
+            controls.enableZoom = false;
+            controls.enablePan = false;
+            controls.maxPolarAngle = Math.PI / 2.1;
+            controls.minPolarAngle = 0.1;
+            controls.target.copy(START_TARGET);
+            camera.position.set(START_POS.x, cameraHeight, START_POS.z);
+            controls.update();
+            modeText.textContent = '浏览';
+            modeText.style.color = '#88ddff';
+            $('btnOverview').textContent = '🔭 俯瞰';
+            $('btnOverview').classList.remove('active');
+        }
+
+        function setOverviewMode() {
+            isOverviewMode = true;
+            controls.enableZoom = true;
+            controls.enablePan = true;
+            controls.maxPolarAngle = Math.PI;
+            controls.minPolarAngle = 0;
+            controls.target.copy(OVERVIEW_TARGET);
+            camera.position.copy(OVERVIEW_POS);
+            controls.update();
+            modeText.textContent = '俯瞰';
+            modeText.style.color = '#ffaa66';
+            $('btnOverview').textContent = '🚶 回到地面';
+            $('btnOverview').classList.add('active');
+        }
+
+        // ============================================================
+        //  键盘控制
+        // ============================================================
+        const keys = { w: false, a: false, s: false, d: false };
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if ('wasd'.includes(key)) {
+                keys[key] = true;
+                e.preventDefault();
+            }
+
+            if (e.key === 'e' || e.key === 'E') {
+                adjustCameraHeight(0.2);
+                e.preventDefault();
+            }
+            if (e.key === 'q' || e.key === 'Q') {
+                adjustCameraHeight(-0.2);
+                e.preventDefault();
+            }
+
+            if (e.key === 'Escape') {
+                if (isDraggingToPlace) {
+                    cancelDragging();
+                    e.preventDefault(); return;
+                }
+                deselectObject();
+                deselectLight();
+                deselectImage();
+                hideScaleHandles();
+                hideImageResizeHandles();
+                coordToast.classList.remove('show');
+                showToast('✅ 已退出');
+                e.preventDefault();
+            }
+            if ((e.key === 'Delete' || e.key === 'Backspace')) {
+                if (selectedObject) {
+                    removeObject(selectedObject);
+                    deselectObject();
+                    hideScaleHandles();
+                } else if (selectedImage) {
+                    removeImage(selectedImage);
+                    deselectImage();
+                    hideImageResizeHandles();
+                } else if (selectedLight) {
+                    removeLight(selectedLight);
+                    deselectLight();
+                }
+                e.preventDefault();
+            }
+            if (e.ctrlKey && e.key === 'z') {
+                e.preventDefault();
+                undo();
+            }
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                saveState();
+            }
+        });
+        document.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if ('wasd'.includes(key)) {
+                keys[key] = false;
+                e.preventDefault();
+            }
+        });
+
+        function move(dt) {
+            if (isImageEditing && selectedImage) {
+                const speed = 2.5;
+                const fwd = new THREE.Vector3();
+                camera.getWorldDirection(fwd);
+                fwd.y = 0;
+                fwd.normalize();
+                const d = new THREE.Vector3();
+                if (keys.a) d.add(fwd.clone().multiplyScalar(speed * dt));
+                if (keys.d) d.add(fwd.clone().multiplyScalar(-speed * dt));
+                if (d.length()) {
+                    selectedImage.position.add(d);
+                    showImageResizeHandles(selectedImage);
+                }
+                return;
+            }
+
+            if (isMoving || isOverviewMode || isEditing || isLightEditing || isImageEditing || isScaling ||
+                isImageResizing || isDraggingToPlace || isDragging) return;
+            const speed = 3.5;
+            const fwd = new THREE.Vector3();
+            camera.getWorldDirection(fwd);
+            fwd.y = 0;
+            fwd.normalize();
+            const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0)).normalize();
+            const d = new THREE.Vector3();
+            if (keys.w) d.add(fwd.clone().multiplyScalar(speed * dt));
+            if (keys.s) d.add(fwd.clone().multiplyScalar(-speed * dt));
+            if (keys.a) d.add(right.clone().multiplyScalar(-speed * dt));
+            if (keys.d) d.add(right.clone().multiplyScalar(speed * dt));
+            if (d.length()) {
+                camera.position.add(d);
+                controls.target.add(d);
+            }
+        }
+
+        // ============================================================
+        //  动画循环
+        // ============================================================
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = clock.getDelta();
+            move(dt);
+            updateMovement(dt);
+            controls.update();
+            composer.render();
+
+            if (selectedObject && isEditing) {
+                showScaleHandles(selectedObject);
+            }
+            if (selectedImage && isImageEditing) {
+                showImageResizeHandles(selectedImage);
+            }
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        renderer.domElement.setAttribute('tabindex', '0');
+        renderer.domElement.focus();
+
+        console.log('✅ 展馆已加载');
+        console.log('🖼️ 右键墙面 → 上传图片 / 放置灯光');
+        console.log('🧊 左侧工具栏：正方体 / 长方体');
+        console.log('📐 双击编辑 | 拖拽手柄调大小');
+        console.log('🎨 右键染色（黑/白/棕）| 右键删除');
+        console.log('👁️ E/Q 调节视角高度');
+        console.log('📍 动线点移动保持视角高度不变');
+    </script>
+</body>
+
+</html>
